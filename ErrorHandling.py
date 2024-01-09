@@ -37,11 +37,11 @@ import logging
 from pathlib import Path
 
 
-class SolverError(Exception):
+class SolverError(Exception):  """특정 오류 조건을 처리하기 위한 코드"""
     pass
 
 
-class SolverInfeasibleError(Exception):
+class SolverInfeasibleError(Exception): """특정 오류 조건을 처리하기 위한 코드"""
     pass
 
 
@@ -83,17 +83,16 @@ class FilenameError(ValueError):
 
 class TellUser:
     @classmethod
-    def create_log(cls, logs_path, verbose):
-        try:
+    def create_log(cls, logs_path, verbose):                                       """logs_path (로그 디렉토리의 경로)와 verbose (메시지를 콘솔에 출력할지 여부를 나타내는 부울 값)를 매개변수로 사용"""
             os.makedirs(logs_path)
         except OSError:
             print("Creation of the logs_path directory %s failed. Possibly already created." % logs_path) if verbose else None
         else:
             print("Successfully created the logs_path directory %s " % logs_path) if verbose else None
-        log_filename = logs_path / 'dervet_log.log'
-        handler = logging.FileHandler(log_filename, mode='w')
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
+        log_filename = logs_path / 'dervet_log.log'                                """dervet_log.log'라는 이름의 로그 파일을 지정된 로그 디렉토리 내에 만듬"""
+        handler = logging.FileHandler(log_filename, mode='w')                      """로그를 파일로 저장하는 핸들러를 쓰기모드로 열도록 지정"""
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s') """로그 메시지 형식 지정, (작성 시간/로그 레벨(DEBUG,ERROR 등)/실제 로그메시지"""
+        handler.setFormatter(formatter)                                            """핸들러에 포매터 설정하며 파일 핸들러가 사용자가 지정한 형식으로 로그메시지를 기록하게 함"""
         cls.logger = logging.getLogger('Error')
         cls.logger.setLevel(logging.DEBUG)
         cls.logger.addHandler(handler)
