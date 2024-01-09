@@ -37,11 +37,11 @@ import logging
 from pathlib import Path
 
 
-class SolverError(Exception):  """특정 오류 조건을 처리하기 위한 코드"""
+class SolverError(Exception):  
     pass
 
 
-class SolverInfeasibleError(Exception): """특정 오류 조건을 처리하기 위한 코드"""
+class SolverInfeasibleError(Exception): 
     pass
 
 
@@ -93,13 +93,13 @@ class TellUser:
         handler = logging.FileHandler(log_filename, mode='w')                      """로그를 파일로 저장하는 핸들러를 쓰기모드로 열도록 지정"""
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s') """로그 메시지 형식 지정, (작성 시간/로그 레벨(DEBUG,ERROR 등)/실제 로그메시지"""
         handler.setFormatter(formatter)                                            """핸들러에 포매터 설정하며 파일 핸들러가 사용자가 지정한 형식으로 로그메시지를 기록하게 함"""
-        cls.logger = logging.getLogger('Error')
-        cls.logger.setLevel(logging.DEBUG)
-        cls.logger.addHandler(handler)
+        cls.logger = logging.getLogger('Error')                                    """error의 로거를 반환하거나 새로 생성"""
+        cls.logger.setLevel(logging.DEBUG)                                         """로거의 로깅수준을 설정/ DEBUG부터 ERROR까지 모든 메시지 기록"""
+        cls.logger.addHandler(handler)                                             """로거에 핸들러 추가하여 이 로거로 전송된 로그 메시지가 파일에도 기록되도록 설정"""
         if verbose:
             # create console handler and set level to debug
-            ch = logging.StreamHandler()
-            ch.setLevel(logging.DEBUG)
+            ch = logging.StreamHandler()                                           
+            ch.setLevel(logging.DEBUG)                                             
             # add formatter to ch
             ch.setFormatter(formatter)
             # add ch to logger
@@ -111,8 +111,8 @@ class TellUser:
         for i in list(cls.logger.handlers):
             print(i)
             cls.logger.removeHandler(i)
-            i.flush()
-            i.close()
+            i.flush()                                     """내부 버퍼를 비워줌"""
+            i.close()                                     
 
     @classmethod
     def debug(cls, msg):
@@ -129,3 +129,4 @@ class TellUser:
     @classmethod
     def error(cls, msg):
         cls.logger.error(msg)
+"""debug,ingo,warning,error 메서드를 사용하여 각 로그 레벨의 메시지를 기록"""
