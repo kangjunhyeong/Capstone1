@@ -51,9 +51,9 @@ class LoadFollowing(MarketServiceUpAndDown):
         Args:
             params (Dict): input parameters
         """
-        MarketServiceUpAndDown.__init__(self, 'LF', 'Load Following', params)
-        self.u_ts_constraints = params.get('u_ts_constraints', False)
-        self.d_ts_constraints = params.get('d_ts_constraints', False)
+        MarketServiceUpAndDown.__init__(self, 'LF', 'Load Following', params)    """MarketServiceUpAndDown 클래스의 생성자를 호출하여 해당 클래스의 초기화를 먼저 수행/params라는 딕셔너리 형태의 입력 매개변수를 받음"""
+        self.u_ts_constraints = params.get('u_ts_constraints', False)            """u_ts_constraints 속성 설정"""
+        self.d_ts_constraints = params.get('d_ts_constraints', False)            """d_ts_constraints 속성 설정"""
         if self.u_ts_constraints:
             self.regu_max = params['lf_u_max']
             self.regu_min = params['lf_u_min']
@@ -61,7 +61,7 @@ class LoadFollowing(MarketServiceUpAndDown):
             self.regd_max = params['lf_d_max']
             self.regd_min = params['lf_d_min']
 
-        if self.dt > 0.25:
+        if self.dt > 0.25:                                                    """dt가 0.25보다 클 경우 경고메시지 출력"""
             TellUser.warning("WARNING: using Load Following Service and " +
                              "time series timestep is greater than 15 min.")
 
