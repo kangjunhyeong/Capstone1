@@ -37,50 +37,49 @@ import logging
 from pathlib import Path
 
 
-class SolverError(Exception):  
+class SolverError(Exception):                     """solver 관련 오류에 대한 일반적인 예외 클래스"""
     pass
 
 
-class SolverInfeasibleError(Exception): 
+class SolverInfeasibleError(Exception):           """solver의 해결이 불가능한 상태 오류"""
     pass
 
 
-class SolverUnboundedError(Exception):
+class SolverUnboundedError(Exception):            """solver의 해결이 무한한 상태 오류"""
     pass
 
 
-class SystemRequirementsError(Exception):
+class SystemRequirementsError(Exception):         """시스템 요구사항과 관련된 오류"""
     pass
 
 
-class ModelParameterError(Exception):
+class ModelParameterError(Exception):              """모델 매개변수와 관련된 오류"""
     pass
 
 
-class TimeseriesDataError(Exception):
+class TimeseriesDataError(Exception):             """시계열 데이터와 관련된 오류"""
     pass
 
 
-class TimeseriesMissingError(Exception):
+class TimeseriesMissingError(Exception):          """시계열 데이터가 누락된 경우의 오류"""
     pass
 
 
-class MonthlyDataError(Exception):
+class MonthlyDataError(Exception):                 """월별 데이터와 관련된 오류"""
     pass
 
 
-class TariffError(Exception):
+class TariffError(Exception):                      """타리프와 관련된 오류"""
     pass
 
 
-class ParameterError(ValueError):
+class ParameterError(ValueError):                   """기본 내장 ValueError 클래스를 상속받은 일반적인 매개변수 오류를 나타내는 사용자 정의 예외 클래스"""
     pass
 
 
-class FilenameError(ValueError):
+class FilenameError(ValueError):                  """기본 내장 ValueError 클래스를 상속받은 파일 이름과 관련된 오류를 나타내는 사용자 정의 예외 클래스"""
     pass
-
-
+ 
 class TellUser:
     @classmethod
     def create_log(cls, logs_path, verbose):                                       """logs_path (로그 디렉토리의 경로)와 verbose (메시지를 콘솔에 출력할지 여부를 나타내는 부울 값)를 매개변수로 사용"""
