@@ -43,24 +43,25 @@ VERY_LARGE_NUMBER = 2**32 - 1
 VERY_LARGE_NEGATIVE_NUMBER = -1 * VERY_LARGE_NUMBER
 
 class UserConstraints(ValueStream):
-    """ User entered time series constraints. Each service will be daughters of the PreDispService class.
-
+    """ 사용자가 입력한 시계열 제약 조건을 나타내는 클래스. 각 서비스는 PreDispService 클래스의 하위 클래스가 됩니다.
     """
 
     def __init__(self, params):
-        """ Generates the objective function, finds and creates constraints.
+        """ 목적 함수를 생성하고 제약 조건을 찾아 생성합니다.
 
         Acceptable constraint names are: 'Power Max (kW)', 'Power Min (kW)', 'Energy Max (kWh)', 'Energy Min (kWh)'
 
           Args:
-            params (Dict): input parameters
+            params (Dict): 입력 매개변수
         """
-        # generate the generic service object
+        # 일반적인 서비스 객체 생성
         ValueStream.__init__(self, 'User Constraints', params)
-
+     
+        # 입력된 매개변수에서 사용자 제약 조건에 대한 정보 추출
         self.user_power = params['power']
         self.user_energy = params['energy']
         self.price = params['price']  # $/yr
+        # 다양한 제약 조건을 초기화할 변수들
         self.poi_import_min_constraint = None
         self.poi_import_max_constraint = None
         self.poi_export_min_constraint = None
@@ -69,19 +70,18 @@ class UserConstraints(ValueStream):
         self.soe_max_constraint = None
 
     def grow_drop_data(self, years, frequency, load_growth):
-        """ Adds data by growing the given data OR drops any extra data that might have slipped in.
-        Update variable that hold timeseries data after adding growth data. These method should be called after
-        add_growth_data and before the optimization is run.
+        """ 주어진 데이터를 성장시키거나 불필요한 데이터를 삭제하여 데이터를 추가합니다. 최적화가 실행되기 전에 add_growth_data 이후에 이 메서드를 호출해야 하는 변수를 업데이트합니다.
 
         Args:
-            years (List): list of years for which analysis will occur on
-            frequency (str): period frequency of the timeseries data
-            load_growth (float): percent/ decimal value of the growth rate of loads in this simulation
+            years (List): 분석이 수행될 연도 목록
+            frequency (str): 시계열 데이터의 주기
+            load_growth (float): 시뮬레이션에서의 부하 성장률의 백분율 또는 십진
 
         """
+     # 전력(Power) 데이터에 대해 불필요한 데이터를 추가하고 삭제합니다.
         self.user_power = Lib.fill_extra_data(self.user_power, years, 0, frequency)
         self.user_power = Lib.drop_extra_data(self.user_power, years)
-
+     # 에너지(Energy) 데이터에 대해 불필요한 데이터를 추가하고 삭제합니다.
         self.user_energy = Lib.fill_extra_data(self.user_energy, years, 0, frequency)
         self.user_energy = Lib.drop_extra_data(self.user_energy, years)
 
