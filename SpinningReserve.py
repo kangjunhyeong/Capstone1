@@ -74,28 +74,27 @@ class SpinningReserve(MarketServiceUp):
             self.min = Lib.drop_extra_data(self.min, years)
 
     def constraints(self, mask, load_sum, tot_variable_gen, generator_out_sum, net_ess_power, combined_rating):
-        """Default build constraint list method. Used by services that do not have constraints.
-
+        """기본 제약 조건 목록을 생성하는 메서드입니다. 제약 조건이 없는 서비스에서 사용됩니다.
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
-            tot_variable_gen (Expression): the sum of the variable/intermittent generation sources
-            load_sum (list, Expression): the sum of load within the system
-            generator_out_sum (list, Expression): the sum of conventional generation within the system
-            net_ess_power (list, Expression): the sum of the net power of all the ESS in the system. flow out into the grid is negative
-            combined_rating (Dictionary): the combined rating of each DER class type
+            mask (DataFrame): subs 데이터 세트에 포함된 시계열 데이터에 해당하는 인덱스에 대한 불리언 배열
+            tot_variable_gen (Expression): the variable/intermittent 발전 소스 의 합
+            load_sum (list, Expression): 시스템 내의 부하의 합
+            generator_out_sum (list, Expression): 시스템 내의 발전량 
+            net_ess_power (list, Expression): 시스템 내의 모든 ESS의 순 전력의 합. grid 흐름은 음수
+            combined_rating (Dictionary): 각 DER 클래스 유형의 결합 등급
 
         Returns:
-            An empty list (for aggregation of later constraints)
+            나중에 제약 조건을 집계하기 위한 빈 목록
         """
+         # 부모 클래스(MarketServiceUp)의 constraints 메서드를 호출하여 초기화합니다.
         constraint_list = super().constraints(mask, load_sum, tot_variable_gen,
                                               generator_out_sum, net_ess_power, combined_rating)
-        # add time series service participation constraint, if called for
-        #   Max and Min will constrain the sum of ch_less and dis_more
+         # 시계열 제약 조건이 있는 경우, ch_less와 dis_more의 합이 max를 초과하지 않도록 제약을 추가합니다.
         if self.ts_constraints:
             constraint_list += \
                 [cvx.NonPos(self.variables['ch_less'] +
                             self.variables['dis_more'] - self.max.loc[mask])]
+         # 시계열 제약 조건이 있는 경우, ch_less와 dis_more의 합이 min 미만이 되지 않도록 제약을 추가합니다.
             constraint_list += \
                 [cvx.NonPos(-self.variables['ch_less'] -
                             self.variables['dis_more'] + self.min.loc[mask])]
@@ -103,22 +102,23 @@ class SpinningReserve(MarketServiceUp):
         return constraint_list
 
     def timeseries_report(self):
-        """ Summaries the optimization results for this Value Stream.
-
-        Returns: A timeseries dataframe with user-friendly column headers that summarize the results
-            pertaining to this instance
-
+        """ Value Stream에 대한 최적화 결과를 요약 
+        Returns: 이 인스턴스에 관련된 결과를 요약하는 사용자 친화적인 열 헤더가 있는 시계열 데이터프레임
         """
+     # 부모 클래스(MarketServiceUp)의 timeseries_report 메서드를 호출하여 초기화합니다.
         report = super().timeseries_report()
+     # 시계열 제약 조건이 있는 경우, max와 min 열을 결과에 추가합니다.
         if self.ts_constraints:
             report.loc[:, self.max.name] = self.max
             report.loc[:, self.min.name] = self.min
         return report
 
     def min_regulation_down(self):
+     """시계열 제약 조건이 있는 경우 min을 반환하고, 그렇지 않으면 부모 클래스의 min_regulation_down을 호출합니다."""
         if self.ts_constraints:
             return self.min
         return super().min_regulation_down()
 
     def max_participation_is_defined(self):
+     """max가 정의되어 있는지 여부를 확인하는 메서드입니다."""
         return hasattr(self, 'max')
