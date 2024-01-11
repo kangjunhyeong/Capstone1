@@ -186,51 +186,50 @@ class ValueStream:
 
         Returns:
             표현식의 키로 레이블이 지정된 목적 함수의 영향 부분을 나타내는 딕셔너리. 기본값은 {}를 반환합니다.
+        """
 
     def constraints(self, mask, load_sum, tot_variable_gen, generator_out_sum, net_ess_power, combined_rating):
-        """Default build constraint list method. Used by services that do not have constraints.
+        """기본 제약 목록을 빌드하는 메서드. 제약이 없는 서비스에서 사용됩니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
-            tot_variable_gen (Expression): the sum of the variable/intermittent generation sources
-            load_sum (list, Expression): the sum of load within the system
-            generator_out_sum (list, Expression): the sum of conventional generation within the system
-            net_ess_power (list, Expression): the sum of the net power of all the ESS in the system. [= charge - discharge]
-            combined_rating (cvx.Expression, int): the combined rating of DER that can reliabily dispatched in a worst case situtation
-                these usually tend to be ESS and Generators
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
+            tot_variable_gen (Expression): 변수/불규칙 발전원의 합
+            load_sum (list, Expression): 시스템 내의 부하 합계
+            generator_out_sum (list, Expression): 시스템 내의 일반적인 발전의 합계
+            net_ess_power (list, Expression): 시스템 내의 모든 ESS의 순 전력 합계 [= 충전 - 방전]
+            combined_rating (cvx.Expression, int): 최악의 경우 상황에서 신뢰성 있게 디스패치될 수 있는 DER의 결합 등급
+            일반적으로 ESS 및 발전기입니다.
 
         Returns:
-            An empty list (for aggregation of later constraints)
+            나중에 제약 조건을 집계하기 위한 빈 리스트
         """
         return []
 
     def save_variable_results(self, subs_index):
-        """ Searches through the dictionary of optimization variables_df and saves the ones specific to each
-        ValueStream instance and saves the values it to itself
+        """ optimization 변수 딕셔너리를 검색하고 각 ValueStream 인스턴스에 특화된 변수를 찾아 해당 값을 자체에 저장합니다.
 
         Args:
-            subs_index (Index): index of the subset of data for which the variables_df were solved for
+            subs_index (Index): 변수가 해결된 데이터의 하위 집합의 인덱스
 
         """
+     # optimization 변수의 값을 저장하는 데이터프레임 생성
         variable_values = pd.DataFrame({name: self.variables[name].value for name in self.variable_names}, index=subs_index)
+     # 기존 변수 결과와 병합하여 저장
         self.variables_df = pd.concat([self.variables_df, variable_values], sort=True)
 
     def timeseries_report(self):
-        """ Summaries the optimization results for this Value Stream.
+        """  이 Value Stream에 대한 최적화 결과를 요약하는 시계열 데이터프레임 생성
 
-        Returns: A timeseries dataframe with user-friendly column headers that summarize the results
-            pertaining to this instance
-
+        Returns: 이 인스턴스에 관련된 결과를 요약하는 사용자 친화적인 열 헤더가 있는 시계열 데이터프레임
         """
+     # 구현 필요
 
     def monthly_report(self):
-        """  Collects all monthly data that are saved within this object
+        """  이 객체에 저장된 모든 월간 데이터를 수집
 
-        Returns: A dataframe with the monthly input price of the service
-
+        Returns: 서비스의 월별 입력 가격을 나타내는 데이터프레임
         """
-
+     # 구현 필요
     def drill_down_reports(self, monthly_data=None, time_series_data=None, technology_summary=None, **kwargs):
         """ Calculates any service related dataframe that is reported to the user.
 
