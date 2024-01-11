@@ -162,38 +162,30 @@ class ValueStream:
         return stored
 
     def worst_case_uenergy_provided(self, mask):
-        """ the amount of energy, from the current SOE that needs to be reserved for this value stream
-        to prevent any violates between the steps in time that are not catpured in our timeseries.
-
-        Note: stored energy should be positive and provided energy should be negative
+        """ 현재 SOE로부터 예약되어야 하는 에너지 양으로, 시계열 데이터에 포함되지 않은 시간 단계 사이의 위반을 방지합니다.
+            NOTE: 저장된 에너지는 양수이어야 하며, 제공된 에너지는 음수여야 합니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
-
-        Returns: the case where the systems would end up with less energy than expected
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
+        Returns: 예상상보다 적은 에너지로 시스템이 끝날 경우의 경우
 
         """
         provided = cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'uEprovidedZero{self.name}')
         return provided
 
     def objective_function(self, mask, load_sum, tot_variable_gen, generator_out_sum, net_ess_power, annuity_scalar=1):
-        """ Generates the full objective function, including the optimization variables.
+        """ 전체 목적 함수를 생성하며 최적화 변수를 포함합니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                in the subs data set
-            tot_variable_gen (Expression): the sum of the variable/intermittent generation sources
-            load_sum (list, Expression): the sum of load within the system
-            generator_out_sum (list, Expression): the sum of conventional generation within the system
-            net_ess_power (list, Expression): the sum of the net power of all the ESS in the system. [= charge - discharge]
-            annuity_scalar (float): a scalar value to be multiplied by any yearly cost or benefit that helps capture the cost/benefit over
-                        the entire project lifetime (only to be set iff sizing)
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
+        tot_variable_gen (Expression): 변수/불규칙 발전원의 합
+        load_sum (list, Expression): 시스템 내의 부하 합계
+        generator_out_sum (list, Expression): 시스템 내의 일반적인 발전의 합계
+        net_ess_power (list, Expression): 시스템 내의 모든 ESS의 순 전력 합계 [= 충전 - 방전]
+        annuity_scalar (float): 프로젝트 수명 동안 비용 또는 이익을 포착하는 데 사용되는 연간 비용 또는 이익에 곱해질 스칼라 값 (사이징인 경우에만 설정)
 
         Returns:
-            A dictionary with the portion of  the objective function that it affects, labeled by the expression's key. Default is to return {}.
-        """
-        return {}
+            표현식의 키로 레이블이 지정된 목적 함수의 영향 부분을 나타내는 딕셔너리. 기본값은 {}를 반환합니다.
 
     def constraints(self, mask, load_sum, tot_variable_gen, generator_out_sum, net_ess_power, combined_rating):
         """Default build constraint list method. Used by services that do not have constraints.
