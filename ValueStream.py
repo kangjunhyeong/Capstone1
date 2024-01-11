@@ -52,10 +52,10 @@ class ValueStream:
         self.dt = params['dt']   # 시간 간격
         self.system_requirements = []   # 시스템 요구 사항 리스트
 
-        self.variables_df = pd.DataFrame()  # 최적화 변수는 여기에 저장됨
+        self.variables_df = pd.DataFrame()  # 최적화 변수를 저장할 DataFrame
         self.variable_names = {}  # 변수 이름
 
-         # 최적화 문제에 특화된 속성 (창에서 창으로 변경될 수 있는 속성)
+        # 최적화 문제에 특화된 속성 (창에서 창으로 변경될 수 있는 속성)
         self.variables = None
 
     def grow_drop_data(self, years, frequency, load_growth):
@@ -93,6 +93,7 @@ class ValueStream:
         Returns: CVXPY parameter/variable
 
         """
+     # CVXPY 모듈을 사용하여 매개변수를 생성하고 반환합니다. 초기값은 np.zeros(sum(mask))로 설정되며, 매개변수의 모양은 sum(mask)로, 이름은 f'{self.name}ZeroUp'로 설정됩니다.
         return cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'{self.name}ZeroUp')
 
     def p_reservation_charge_down(self, mask):
@@ -103,6 +104,7 @@ class ValueStream:
         Returns: CVXPY parameter/variable
 
         """
+     # CVXPY 모듈을 사용하여 매개변수를 생성하고 반환합니다. 초기값은 np.zeros(sum(mask))로 설정되며, 매개변수의 모양은 sum(mask)로, 이름은 f'{self.name}ZeroDown'로 설정됩니다.
         return cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'{self.name}ZeroDown')
 
     def p_reservation_discharge_up(self, mask):
@@ -187,6 +189,7 @@ class ValueStream:
         Returns:
             표현식의 키로 레이블이 지정된 목적 함수의 영향 부분을 나타내는 딕셔너리. 기본값은 {}를 반환합니다.
         """
+        return {}
 
     def constraints(self, mask, load_sum, tot_variable_gen, generator_out_sum, net_ess_power, combined_rating):
         """기본 제약 목록을 빌드하는 메서드. 제약이 없는 서비스에서 사용됩니다.
