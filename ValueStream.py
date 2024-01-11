@@ -231,58 +231,60 @@ class ValueStream:
         """
      # 구현 필요
     def drill_down_reports(self, monthly_data=None, time_series_data=None, technology_summary=None, **kwargs):
-        """ Calculates any service related dataframe that is reported to the user.
-
-        Returns: dictionary of DataFrames of any reports that are value stream specific
-            keys are the file name that the df will be saved with
+        """ 사용자에게 보고된 서비스 관련 데이터프레임을 계산합니다.
+        Returns: 값 스트림별로 저장되는 모든 보고서의 데이터프레임 딕셔너리 키는 데이터프레임이 저장될 파일 이름입니다.
 
         """
         return {}
 
     def update_price_signals(self, monthly_data, time_series_data):
-        """ Updates attributes related to price signals with new price signals that are saved in
-        the arguments of the method. Only updates the price signals that exist, and does not require all
-        price signals needed for this service.
+        """ 새 가격 신호로 가격 신호와 관련된 속성을 업데이트합니다. 이 서비스에 필요한 가격 신호만 업데이트하며 모든 가격 신호를 필요로하지 않습니다.
 
         Args:
-            monthly_data (DataFrame): monthly data after pre-processing
-            time_series_data (DataFrame): time series data after pre-processing
+            monthly_data (DataFrame): 전처리 후의 월간 데이터
+            time_series_data (DataFrame): 전처리 후의 시계열 데이터
 
         """
         pass
 
     def proforma_report(self, opt_years, apply_inflation_rate_func, fill_forward_func, results):
-        """ Calculates the proforma that corresponds to participation in this value stream
+        """ 이 값 스트림에 참여에 해당하는 proforma를 계산합니다.
 
         Args:
-            opt_years (list): list of years the optimization problem ran for
+            opt_years (list): 최적화 문제를 실행한 연도 목록
             apply_inflation_rate_func:
             fill_forward_func:
-            results (pd.DataFrame): DataFrame with all the optimization variable solutions
-
-        Returns: A tuple of a DateFrame (of with each year in opt_year as the index and the corresponding
-        value this stream provided)
+            results (pd.DataFrame): 모든 최적화 변수 솔루션을 포함하는 DataFrame
+        
+        Returns: 연도별로 색인이 지정된 DateFrame의 튜플 (해당 년도와 이 값 스트림에서 제공하는 해당 값)
 
         """
         opt_years = [pd.Period(year=item, freq='y') for item in opt_years]
         proforma = pd.DataFrame(index=opt_years)
         return proforma
 
-    def min_regulation_up(self):
+    def min_regulation_up(self):  # 변동 상승 최소값을 반환합니다.
         return 0
 
-    def min_regulation_down(self):
+    def min_regulation_down(self):  # 변동 하 최소값을 반환합니다.
         return 0
 
     def max_participation_is_defined(self):
         return False
 
     def rte_list(self, poi):
-        # value streams sometimes need rte in calculations
-        # get a list of rte values from all active ess
-        # default to [1], so that division by rte remains valid
+       """ 값 스트림은 때로는 계산에 rte가 필요합니다.
+    모든 활성 ess에서 rte 값 목록을 가져옵니다.
+    기본값은 [1]로 설정되어 있어 rte로의 나눗셈이 유효합니다.
+
+    Args:
+        poi: PointOfInterconnection 객체
+
+    Returns:
+        list: rte 값 목록
+    """
         rte_list = [der.rte for der in poi.der_list if der.technology_type == 'Energy Storage System']
         if len(rte_list) == 0:
             rte_list = [1]
-        # set an attribute to the value stream
+        # 값 스트림에 속성을 설정합니다
         self.rte_list = rte_list
