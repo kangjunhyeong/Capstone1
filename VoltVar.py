@@ -53,12 +53,12 @@ class VoltVar(ValueStream):
             params (Dict): 입력 매개변수
         """
 
-        # 일반적인 서비스 객체를 생성합니다.
+        # generate the generic service object
         ValueStream.__init__(self, 'Volt Var', params)
 
-        # 전압 지원에 특화된 속성을 추가합니다.
-        self.vars_percent = params['percent'] / 100 # 전압 변화 비율
-        self.price = params['price'] # 가격
+        # add voltage support specific attributes
+        self.vars_percent = params['percent'] / 100
+        self.price = params['price']
 
         self.vars_reservation = 0
 
@@ -86,21 +86,21 @@ class VoltVar(ValueStream):
         # PV가 포함되어 있고 'dc'로 연결되어 있는지 확인합니다. TODO: 이 부분을 수정하여 서비스가 작동하도록 합니다.
         pv_max = 0
         inv_max = 0
-       # if 'PV' in der_dict.keys:
-       #     if der_dict['PV'].loc == 'dc':
-       #         # PV 및 ess에서 공유하는 인버터의 inv_max를 사용하고 PV 발전량을 저장합니다.
-       #         inv_max = der_dict['PV'].inv_max
-       #         pv_max = der_dict['PV'].generation
-       # else:
-       #     # 그렇지 않으면 저장소의 등급 방전만 사용합니다.
-       #     inv_max = der_dict['Storage'].dis_max_rated
+        # if 'PV' in der_dict.keys:
+        #     if der_dict['PV'].loc == 'dc':
+        #         # use inv_max of the inverter shared by pv and ess and save pv generation
+        #         inv_max = der_dict['PV'].inv_max
+        #         pv_max = der_dict['PV'].generation
+        # else:
+        #     # otherwise just use the storage's rated discharge
+        #     inv_max = der_dict['Storage'].dis_max_rated
 
-       # 부하를 저장합니다.
-       # self.load = load_data['load']
+        # # save load
+        # self.load = load_data['load']
 
         self.vars_reservation = self.vars_percent * inv_max
 
-        # 전력이 충분히 많이 출력되도록 전력을 제한합니다.
+        # constrain power s.t. enough vars are being outted as well
         power_sqrd = (inv_max**2) - (self.vars_reservation**2)
 
         dis_max = math.sqrt(power_sqrd) - pv_max
@@ -127,10 +127,13 @@ class VoltVar(ValueStream):
         Returns: 각 연도를 인덱스로 사용하고 이 가치 스트림이 제공한 해당 값을 포함하는 DataFrame의 튜플
 
         """
+        # 상위 클래스인 ValueStream의 proforma_report 메서드를 호출하여 초기 proforma를 계산합니다.
         proforma = ValueStream.proforma_report(self, opt_years, apply_inflation_rate_func,
                                                      fill_forward_func, results)
+        # proforma DataFrame의 열 이름을 수정하여 현재 서비스의 이름과 'Value'를 추가합니다.
         proforma.columns = [self.name + ' Value']
 
+        # 각 연도에 대해 self.price 값을 proforma에 추가합니다.
         for year in opt_years:
             proforma.loc[pd.Period(year=year, freq='y')] = self.price
         # 인플레이션 비율 적용
