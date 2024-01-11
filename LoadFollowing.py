@@ -186,44 +186,44 @@ class LoadFollowing(MarketServiceUpAndDown):
             time_series_data (DataFrame): time series data after pre-processing
 
         """
-        if self.combined_market:
+        if self.combined_market:                                      
             try:
-                fr_price = time_series_data.loc[:, 'LF Price ($/kW)']
+                fr_price = time_series_data.loc[:, 'LF Price ($/kW)']         """LF Price ($/kW) 열을 시계열 데이터로부터 가져와 fr_price변수에 할당"""
             except KeyError:
                 pass
-            else:
-                self.p_regu = np.divide(fr_price, 2)
-                self.p_regd = np.divide(fr_price, 2)
+            else: 
+                self.p_regu = np.divide(fr_price, 2)                         """LF Price($/kW)값을 2로나눈 값을 self.p_regu에 할당"""
+                self.p_regd = np.divide(fr_price, 2)                         """LF Price($/kW)값을 2로나눈 값을 self.p_regd에 할당"""
 
             try:
-                self.price = time_series_data.loc[:, 'DA Price ($/kWh)']
+                self.price = time_series_data.loc[:, 'DA Price ($/kWh)']     """DA Price ($/kWh)열을 시계열 데이터로부터 가져와 self.price에 할"""
             except KeyError:
                 pass
         else:
             try:
-                self.p_regd = time_series_data.loc[:, 'LF Down Price ($/kW)']
+                self.p_regd = time_series_data.loc[:, 'LF Down Price ($/kW)']  """LF Down Price ($/kW)열을 시계열 데이터로부터 가져와 self.p_regd에 할당"""
+            except KeyError:                                            
+                pass
+
+            try:
+                self.p_regu = time_series_data.loc[:, 'LF Up Price ($/kW)']    """LF Up Price ($/kW) 열을 시계열 데이터로부터 가져와 self.p_regu에 할당"""
             except KeyError:
                 pass
 
             try:
-                self.p_regu = time_series_data.loc[:, 'LF Up Price ($/kW)']
-            except KeyError:
-                pass
-
-            try:
-                self.price = time_series_data.loc[:, 'DA Price ($/kWh)']
+                self.price = time_series_data.loc[:, 'DA Price ($/kWh)']      """DA Price ($/kWh)' 열을 시계열 데이터로부터 가져와 self.price에 할당"""
             except KeyError:
                 pass
 
     def min_regulation_up(self):
-        if self.u_ts_constraints:
-            return self.regu_min
-        return super().min_regulation_up()
+        if self.u_ts_constraints:                 # 상향 시계열 제약이 활성화 된 경우
+            return self.regu_min                  # regu_min 속성을 반환
+        return super().min_regulation_up()        # 상향 시계열 제약이 비활성화 된 경우 부모 클래스인 MarketServiceUpAndDown의 min_regulation_up 메서드를 호출하여 해당 값 반환
 
-    def min_regulation_down(self):
-        if self.d_ts_constraints:
-            return self.regd_min
-        return super().min_regulation_down()
+    def min_regulation_down(self):               
+        if self.d_ts_constraints:                 # 하향 시계열 제약이 활성화 된 경우
+            return self.regd_min                  # regd_min 속성을 반환
+        return super().min_regulation_down()      # 하향 시계열 제약이 비활성화 된 경우 부모 클래스인 MarketServiceUpAndDown의 min_regulation_down 메서드를 호출하여 해당 값을 반환
 
     def max_participation_is_defined(self):
-        return self.u_ts_constraints and self.d_ts_constraints
+        return self.u_ts_constraints and self.d_ts_constraints  # 두 시계열 제약이 모두 정의 되었으면 True, 그렇지 않으면 False를 반환
