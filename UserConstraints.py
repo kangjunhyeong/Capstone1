@@ -134,15 +134,12 @@ class UserConstraints(ValueStream):
             self.system_requirements.append(Requirement('energy', 'min', self.name, self.soe_min_constraint))
 
     def timeseries_report(self):
-        """ Summaries the optimization results for this Value Stream.
+        """ 해당 Value Stream에 대한 최적화 결과를 요약하는 시계열 데이터프레임을 생성합니다.
 
-        Returns: A timeseries dataframe with user-friendly column headers that summarize the results
-            pertaining to this instance
-
+        Returns: 해당 인스턴스에 대한 결과를 요약하는 데 사용되는 사용자 친화적인 열 헤더가 있는 시계열 데이터프레임
         """
-        # use the altered system requirement constraints in the output time series
-        # NOTE: we display export values as the negative of what they are in the constraint,
-        #     since negative Net Power is actually positive Export Power
+       # 변경된 시스템 요구 사항 제약 조건을 출력 시계열에 사용합니다.
+       # NOTE: 음의 Net Power는 사실 양의 Export Power이므로 제약 조건에서는 음수로 표시된 값을 표시합니다.
         if self.poi_export_max_constraint is not None:
             TellUser.info('For better alignment with "Net Power" in the output time series, we multiply POI: Max Export values by -1')
             self.user_power['POI: Max Export (kW)'] = self.poi_export_max_constraint * -1
@@ -153,54 +150,53 @@ class UserConstraints(ValueStream):
             self.user_power['POI: Max Import (kW)'] = self.poi_import_max_constraint
         if self.poi_import_min_constraint is not None:
             self.user_power['POI: Min Import (kW)'] = self.poi_import_min_constraint
-        # add 'User Constraints' label to beginning of each column name
+        # 각 열 이름 앞에 'User Constraints' 레이블을 추가합니다.
         new_power_names = {original: f"{self.name} {original}" for original in self.user_power.columns}
         self.user_power.rename(columns=new_power_names, inplace=True)
         new_energy_names = {original: f"{self.name} {original}" for original in self.user_energy.columns}
         self.user_energy.rename(columns=new_energy_names, inplace=True)
-        # concat energy and power together
+        # 에너지와 전력을 함께 연결합니다.
         power_df = self.user_power if not self.user_power.empty else None
         energy_df = self.user_energy if not self.user_energy.empty else None
         report = pd.concat([power_df, energy_df], axis=1)
         return report
 
     def proforma_report(self, opt_years, apply_inflation_rate_func, fill_forward_func, results):
-        """ Calculates the proforma that corresponds to participation in this value stream
+        """  이 Value Stream에 참여하는 데 해당하는 프로포마(수익 혹은 비용의 시계열)를 계산합니다.
 
         Args:
-            opt_years (list): list of years the optimization problem ran for
-            apply_inflation_rate_func:
-            fill_forward_func:
-            results (pd.DataFrame): DataFrame with all the optimization variable solutions
+            opt_years (list): 최적화 문제가 실행된 연도 목록
+            apply_inflation_rate_func: 인플레이션 비율을 적용하는 함수
+            fill_forward_func: 누락된 데이터를 앞으로 채우는 함수
+            results (pd.DataFrame):모든 최적화 변수 솔루션을 포함하는 DataFrame
 
-        Returns: A tuple of a DateFrame (of with each year in opt_year as the index and the corresponding
-        value this stream provided)
+        Returns:  각 연도에 대한 값을 인덱스로 사용한 DataFrame을 포함하는 튜플
+
 
         """
+        # 부모 클래스(ValueStream)의 proforma_report 메서드 호출
         proforma = ValueStream.proforma_report(self, opt_years, apply_inflation_rate_func,
                                                fill_forward_func, results)
         proforma[self.name + ' Value'] = 0
-
+        # 각 연도에 대한 Value Stream이 제공한 값(가격)을 proforma DataFrame에 추가
         for year in opt_years:
             proforma.loc[pd.Period(year=year, freq='y')] = self.price
-        # apply inflation rates
+        # 인플레이션 비율 적용
         proforma = apply_inflation_rate_func(proforma, None, min(opt_years))
+        # 누락된 데이터 앞으로 채우기
         proforma = fill_forward_func(proforma, None)
         return proforma
 
     def update_yearly_value(self, new_value: float):
-        """ Updates the attribute associated to the yearly value of this service. (used by CBA)
-
+        """ 이 서비스의 연간 가치에 연결된 속성을 업데이트합니다. (CBA에서 사용됨)
         Args:
-            new_value (float): the dollar yearly value to be assigned for providing this service
-
+            new_value (float): 이 서비스를 제공하는 데 할당된 달러 연간 가치
         """
         self.price = new_value
 
     @staticmethod
     def return_positive_values(array):
-        """ Given an array s.t. for all values >0 or for all values <0 is true,
-        return an array whose values are always positive
+        """ 주어진 배열이 모든 값이 >0 또는 모든 값이 <0인 경우, 값이 항상 양수인 배열을 반환합니다.
 
         Args:
             array (pd.Series):
