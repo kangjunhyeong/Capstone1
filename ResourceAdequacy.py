@@ -177,14 +177,14 @@ class ResourceAdequacy(ValueStream):
          TODO: 이것이 sub-hourly 시스템 부하 프로파일에 대해 작동하는지 확인 -- HN
 
         """
-        # DETERMINE RA EVENT INTERVALS
+        # RA 이벤트 간격 결정
         event_interval = pd.Series(np.zeros(len(self.system_load)), index=self.system_load.index)
         event_start = pd.Series(np.zeros(len(self.system_load)), index=self.system_load.index)  # used to set energy constraints
-        # odd intervals straddle peak & even intervals have extra interval after peak
+        # 홀수 간격은 피크를 기준으로 양 옆에 걸칩니다. 짝수 간격은 피크 이후에 추가 간격이 있습니다.
         steps = self.length / self.dt
-        if steps % 2:  # this is true if mod(steps/2) is not 0 --> if steps is odd
+        if steps % 2:  # steps가 홀수인 경우
             presteps = np.floor_divide(steps, 2)
-        else:  # steps is even
+        else:   # steps가 짝수인 경우
             presteps = (steps / 2) - 1
         poststeps = presteps + 1
 
@@ -192,7 +192,7 @@ class ResourceAdequacy(ValueStream):
             first_int = peak - pd.Timedelta(presteps * self.dt, unit='h')
             last_int = peak + pd.Timedelta(poststeps * self.dt, unit='h')
 
-            # handle edge RA event intervals
+            # 가장자리 RA 이벤트 간격 처리
             if first_int < event_interval.index[0]:  # RA event starts before the first time-step in the system load
                 first_int = event_interval.index[0]
             if last_int > event_interval.index[-1]:  # RA event ends after the last time-step in the system load
