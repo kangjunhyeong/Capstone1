@@ -42,14 +42,9 @@ import storagevet.Library as Lib
 
 
 class MarketServiceUpAndDown(ValueStream):
-    """ A market service that can provide services in the "up" and "down"
-    directions
-
-    """
-
+    """ 일 때 서비스를 제공할 수 있는 마켓 서비스 """
     def __init__(self, name, full_name, params):
-        """ Generates the objective function, finds and creates constraints.
-
+        """ 목적 함수를 생성하고 제약 조건을 찾아 생성
         Args:
             name (str): abbreviated name
             full_name (str): the expanded name of the service
@@ -66,181 +61,37 @@ class MarketServiceUpAndDown(ValueStream):
         self.price_down = params['regd_price']
         self.price_up = params['regu_price']
         self.price_energy = params['energy_price']
-        self.variable_names = {'up_ch', 'up_dis', 'down_ch', 'down_dis'}
-        self.variables_df = pd.DataFrame(columns=self.variable_names)
-
-    def grow_drop_data(self, years, frequency, load_growth):
-        """ Adds data by growing the given data OR drops any extra data that
-        might have slipped in. Update variable that hold timeseries data
-        after adding growth data. These method should be called after
-        add_growth_data and before the optimization is run.
-
-        Args:
-            years (List): list of years for which analysis will occur on
-            frequency (str): period frequency of the timeseries data
-            load_growth (float): percent/ decimal value of the growth rate of
-                loads in this simulation
-
-        """
-        self.price_energy = Lib.fill_extra_data(self.price_energy, years,
-                                                self.energy_growth, frequency)
-        self.price_energy = Lib.drop_extra_data(self.price_energy, years)
-
-        self.price_up = Lib.fill_extra_data(self.price_up, years,
-                                            self.growth, frequency)
-        self.price_up = Lib.drop_extra_data(self.price_up, years)
-
-        self.price_down = Lib.fill_extra_data(self.price_down, years,
-                                              self.growth, frequency)
-        self.price_down = Lib.drop_extra_data(self.price_down, years)
-
-    def initialize_variables(self, size):
-        """ Updates the optimization variable attribute with new optimization
-        variables of size SIZE
-
-        Variables added:
-            up_ch (Variable): A cvxpy variable for freq regulation capacity to
-                increase charging power
-            down_ch (Variable): A cvxpy variable for freq regulation capacity to
-                decrease charging power
-            up_dis (Variable): A cvxpy variable for freq regulation capacity to
-                increase discharging power
-            down_dis (Variable): A cvxpy variable for freq regulation capacity to
-                decrease discharging power
-
-        Args:
-            size (Int): Length of optimization variables to create
-
-        Returns:
-            Dictionary of optimization variables
-        """
-        self.variables = {
-            'up_ch': cvx.Variable(shape=size, name=f'{self.name}_up_c'),
-            'down_ch': cvx.Variable(shape=size, name=f'{self.name}_regd_c'),
-            'up_dis': cvx.Variable(shape=size, name=f'{self.name}_up_dis'),
-            'down_dis': cvx.Variable(shape=size, name=f'{self.name}_regd_d')
-        }
-
-    def objective_function(self, mask, load_sum, tot_variable_gen,
-                           generator_out_sum, net_ess_power, annuity_scalar=1):
-        """ Generates the full objective function, including the optimization
-        variables.
-
-        Args:
-            mask (DataFrame): A boolean array that is true for indices
-                corresponding to time_series data included in the subs data set
-            tot_variable_gen (Expression): the sum of the variable/intermittent
-                generation sources
-            load_sum (list, Expression): the sum of load within the system
-            generator_out_sum (list, Expression): the sum of conventional
-                generation within the system
-            net_ess_power (list, Expression): the sum of the net power of all
-                the ESS in the system. [= charge - discharge]
-            annuity_scalar (float): a scalar value to be multiplied by any
-                yearly cost or benefit that helps capture the cost/benefit over
-                the entire project lifetime (only to be set iff sizing)
-
-        Returns:
-            A dictionary with the portion of the objective function that it
-                affects, labeled by the expression's key. Default is {}.
-
-        """
-
-        # pay for reg down energy, get paid for reg up energy
-        # paid revenue for capacity to do both
-        size = sum(mask)
-
-        p_regu = cvx.Parameter(size, value=self.price_up.loc[mask].values,
-                               name=f'{self.name}_p_regu')
-        p_regd = cvx.Parameter(size, value=self.price_down.loc[mask].values,
-                               name=f'{self.name}_p_regd')
-        p_ene = cvx.Parameter(size, value=self.price_energy.loc[mask].values,
-                              name=f'{self.name}_price')
-        eou = self.get_energy_option_up(mask)
-        eod = self.get_energy_option_down(mask)
-        # REGULATION DOWN: PAYMENT
-        regdown_disch_payment \
-            = cvx.sum(self.variables['down_dis'] * -p_regd) * annuity_scalar
-        regdown_charge_payment \
-            = cvx.sum(self.variables['down_ch'] * -p_regd) * annuity_scalar
-        reg_down_tot = regdown_charge_payment + regdown_disch_payment
-
-        # REGULATION UP: PAYMENT
-        regup_disch_payment \
-            = cvx.sum(self.variables['up_dis'] * -p_regu) * annuity_scalar
-        regup_charge_payment \
-            = cvx.sum(self.variables['up_ch'] * -p_regu) * annuity_scalar
-        reg_up_tot = regup_charge_payment + regup_disch_payment
-
-        # REGULATION UP & DOWN: ENERGY SETTLEMENT
-        # NOTE: TODO: here we use rte_list[0] wqhich grabs the first available rte from an active ess
-        #   we will want to change this to actually use all available rte values from the list
-        regdown_disch_settlement \
-            = cvx.sum(cvx.multiply(cvx.multiply(self.variables['down_dis'],
-                                                p_ene),
-                                   eod)) * self.dt * annuity_scalar
-        regdown_charge_settlement \
-            = cvx.sum(cvx.multiply(cvx.multiply(self.variables['down_ch'],
-                                                p_ene),
-                                   eod)) * self.dt * annuity_scalar / self.rte_list[0]
-        e_settlement = regdown_disch_settlement + regdown_charge_settlement
-
-        regup_disch_settlement \
-            = cvx.sum(cvx.multiply(cvx.multiply(self.variables['up_dis'],
-                                                -p_ene),
-                                   eou)) * self.dt * annuity_scalar
-        regup_charge_settlement \
-            = cvx.sum(cvx.multiply(cvx.multiply(self.variables['up_ch'],
-                                                -p_ene),
-                                   eou)) * self.dt * annuity_scalar / self.rte_list[0]
-        e_settlement += regup_disch_settlement + regup_charge_settlement
-
-        return {f'{self.name}_regup_prof': reg_up_tot,
-                f'{self.name}_regdown_prof': reg_down_tot,
-                f'{self.name}_energy_settlement': e_settlement}
-
+        
     def get_energy_option_up(self, mask):
-        """ transform the energy option up into a n x 1 vector
+        """ 상향 에너지 옵션을 n x 1 벡터로 변환
 
         Args:
             mask:
-
         Returns: a CVXPY vector
-
         """
         return cvx.promote(self.eou_avg, mask.loc[mask].shape)
 
     def get_energy_option_down(self, mask):
-        """ transform the energy option down into a n x 1 vector
+        """ 하향 에너지 옵션을 n x 1 벡터로 변환
 
         Args:
             mask:
-
         Returns: a CVXPY vector
-
         """
         return cvx.promote(self.eod_avg, mask.loc[mask].shape)
 
     def constraints(self, mask, load_sum, tot_variable_gen, generator_out_sum,
                     net_ess_power, combined_rating):
-        """build constraint list method for the optimization engine
-
+        """최적화 엔진에 대한 제약 조건 리스트
         Args:
-            mask (DataFrame): A boolean array that is true for indices
-                corresponding to time_series data included in the subs data set
-            tot_variable_gen (Expression): the sum of the variable/intermittent
-                generation sources
-            load_sum (list, Expression): the sum of load within the system
-            generator_out_sum (list, Expression): the sum of conventional
-                generation within the system
-            net_ess_power (list, Expression): the sum of the net power of all
-                the ESS in the system. flow out into the grid is negative
-            combined_rating (Dictionary): the combined rating of each DER class
-                type
+            mask (DataFrame): 데이터 세트에 포함된 시계열 데이터에 대응하는 인덱스에 대한 불리언 배열/ 최적화 문제에서 고려해야하는 시계열 데이터 지정
+            tot_variable_gen (Expression): 가변 발전원의 총 합을 나타냄
+            load_sum (list, Expression): 시스템 내의 발전의 합으로, 전체 발전을 나타냅니다.
+            net_ess_power (list, Expression): 시스템 내 모든 ESS의 순 전력의 합으로, grid의 흐름이 음수인 경우 포함
+            combined_rating (Dictionary):각 DER 클래스 유형의 결합 등급으로, 다양한 DER 클래스에 대한 등급 정보를 포함
 
         Returns:
-            An list of constraints for the optimization variables added to
-            the system of equations
+            방정식에 추가된 최적화 변수에 대한 제약 조건 리스트
         """
         constraint_list = []
         constraint_list += [cvx.NonPos(-self.variables['up_ch'])]
@@ -252,97 +103,56 @@ class MarketServiceUpAndDown(ValueStream):
                 cvx.Zero(self.variables['down_dis'] + self.variables['down_ch'] -
                          self.variables['up_dis'] - self.variables['up_ch'])
             ]
-
+# cvx.NonPos 최적화 변수들이 음수일 때 제약조건 부여 (up_ch,down_ch,up_dis,down_dis 모두 음수)/ 모든 최적화 변수의 합이 0이 되어야 하는 경우, 즉 combined_market이 True인 경우에 해당하는 제약 조건을 추가
         return constraint_list
 
     def p_reservation_charge_up(self, mask):
-        """ the amount of charging power in the up direction (supplying power
-        up into the grid) that needs to be reserved for this value stream
-
-        Args:
-            mask (DataFrame): A boolean array that is true for indices
-                corresponding to time_series data included in the subs data set
+        """ "up" 방향으로 전력을 공급하는 경우에 대한 충전 전력을 이 값이 예약되어야 하는지 여부를 나타내는 CVXPY(ConVex Programming in Python) 매개변수 또는 변수를 반환합니다.
+            mask (DataFrame):subs 데이터 세트에 포함된 시계열 데이터에 대응하는 인덱스에 대한 불리언 배열로, 최적화 문제에서 고려해야 하는 시계열 데이터를 지정합니다.
 
         Returns: CVXPY parameter/variable
-
         """
         return self.variables['up_ch']
-
+# up_ch 최적화 변수 반환/ 전력을 공급하는 경우의 충전전력을 나타냄
     def p_reservation_charge_down(self, mask):
-        """ the amount of charging power in the up direction (pulling power
-        down from the grid) that needs to be reserved for this value stream
-
+        """ "down" 방향으로 전력을 가져오는 경우에 대한 충전 전력을 이 값이 예약되어야 하는지 여부를 나타내는 CVXPY(ConVex Programming in Python) 매개변수 또는 변수를화
         Args:
             mask (DataFrame): A boolean array that is true for indices
                 corresponding to time_series data included in the subs data set
-
-        Returns: CVXPY parameter/variable
-
-        """
-        return self.variables['down_ch']
-
-    def p_reservation_discharge_up(self, mask):
-        """ the amount of charging power in the up direction (supplying power
-        up into the grid) that needs to be reserved for this value stream
-
-        Args:
-            mask (DataFrame): A boolean array that is true for indices
-                corresponding to time_series data included in the subs data set
-
-        Returns: CVXPY parameter/variable
-
-        """
-        return self.variables['up_dis']
-
-    def p_reservation_discharge_down(self, mask):
-        """ the amount of charging power in the up direction (pulling power
-        down from the grid) that needs to be reserved for this value stream
-
-        Args:
-            mask (DataFrame): A boolean array that is true for indices
-                corresponding to time_series data included in the subs data set
-
-        Returns: CVXPY parameter/variable
-
-        """
-        return self.variables['down_dis']
-
-    def uenergy_option_stored(self, mask):
-        """ the deviation in energy due to changes in charge
-
-        Args:
-            mask (DataFrame): A boolean array that is true for indices
-                corresponding to time_series data included in the subs data set
-
         Returns:
 
         """
+    # get_energy_option_up 및 get_energy_option_down은 다른 곳에서 정의된 메서드로,
+    # 각각 "up" 및 "down" 방향의 에너지 옵션을 가져오는 데 사용됩니다.
         eou = self.get_energy_option_up(mask)
         eod = self.get_energy_option_down(mask)
+    # up_ch 및 down_ch는 충전 및 방전에 사용되는 변수입니다.
+    # cvx.multiply 메서드를 사용하여 각각의 변수에 에너지 옵션을 곱하고 시간 간격(dt)을 곱합니다.
         e_ch_less = cvx.multiply(self.variables['up_ch'], eou) * self.dt
         e_ch_more = cvx.multiply(self.variables['down_ch'], eod) * self.dt
+    # 충전으로 인한 에너지 변화에서 방전으로 인한 에너지 변화를 뺀 값을 반환합니다.
         return e_ch_less - e_ch_more
 
     def uenergy_option_provided(self, mask):
-        """ the deviation in energy due to changes in discharge
+        """ 방전 변경으로 인한 에너지 변화
 
         Args:
             mask (DataFrame): A boolean array that is true for indices
             corresponding to time_series data included in the subs data set
 
         Returns:
-
         """
+
         eou = self.get_energy_option_up(mask)
         eod = self.get_energy_option_down(mask)
         e_dis_less = cvx.multiply(self.variables['down_dis'], eod) * self.dt
         e_dis_more = cvx.multiply(self.variables['up_dis'], eou) * self.dt
+     # 방전으로 인한 에너지 변화에서 충전으로 인한 에너지 변화를 뺀 값을 반환합니다.
         return e_dis_more - e_dis_less
 
     def worst_case_uenergy_stored(self, mask):
-        """ the amount of energy, from the current SOE that needs to be
-        reserved for this value stream to prevent any violates between the
-        steps in time that are not catpured in our timeseries.
+        """ 현재 SOE에서 시작하여, 시간 단계 간의 시계열에서 포착되지 않는 시간 간격 사이에서
+    발생할 수 있는 위반을 방지하기 위해 이 값 스트림에 대한 예약해야 하는 에너지의 양을 계산합니다.
 
         Note: stored energy should be positive and provided energy should be
             negative
@@ -360,25 +170,19 @@ class MarketServiceUpAndDown(ValueStream):
         stored \
             = self.variables['down_ch'] * self.duration \
             + self.variables['down_dis'] * self.duration
+    # down_ch: charging power capacity for frequency regulation
+    # down_dis: discharging power capacity for frequency regulation
         return stored
 
     def worst_case_uenergy_provided(self, mask):
-        """ the amount of energy, from the current SOE that needs to be
-         reserved for this value stream to prevent any violates between the
-         steps in time that are not catpured in our timeseries.
-
-        Note: stored energy should be positive and provided energy should be
-        negative
+        """ 현재 SOE에서 이 값 스트림에 예약해야 하는 에너지 양/ 저장된 에너지는 양수이어야하며 제공된 에너지는 음수.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices
-                corresponding to time_series data included in the subs data set
+            mask (DataFrame): 서브 데이터 세트에 포함된 시계열 데이터에 해당하는 인덱스에 대한 불리언 배열.
 
         Returns: tuple (stored, provided),
-            where the first value is the case where the systems would end up
-            with more energy than expected and the second corresponds to the
-            case where the systems would end up with less energy than expected
-
+          첫 번째 값은 시스템이 예상보다 더 많은 에너지를 가지게 될 경우이며,
+            두 번째 값은 시스템이 예상보다 더 적은 에너지를 가지게 될 경우임
         """
         provided \
             = self.variables['up_ch'] * -self.duration \
@@ -386,13 +190,13 @@ class MarketServiceUpAndDown(ValueStream):
         return provided
 
     def timeseries_report(self):
-        """ Summaries the optimization results for this Value Stream.
+        """ 이 Value Stream에 대한 최적화 결과를 요약
 
         Returns: A timeseries dataframe with user-friendly column headers that
             summarize the results pertaining to this instance
 
         """
-
+ # 결과를 저장할 빈 데이터프레임 생성
         report = pd.DataFrame(index=self.price_energy.index)
         # GIVEN
         report.loc[:, f"{self.name} Up Price ($/kW)"] \
@@ -425,6 +229,7 @@ class MarketServiceUpAndDown(ValueStream):
         uenergy_up = e_thru_up_dis + e_thru_up_ch
 
         column_start = f"{self.name} Energy Throughput"
+     # 에너지 스루풋 및 상세 정보 추가
         report.loc[:, f"{column_start} (kWh)"] = uenergy_down + uenergy_up
         report.loc[:, f"{column_start} Up (Charging) (kWh)"] = e_thru_up_ch
         report.loc[:, f"{column_start} Up (Discharging) (kWh)"] = e_thru_up_dis
@@ -435,20 +240,19 @@ class MarketServiceUpAndDown(ValueStream):
         return report
 
     def proforma_report(self, opt_years, apply_inflation_rate_func, fill_forward_func, results):
-        """ Calculates the proforma that corresponds to participation in this value stream
-
+        """ 이 value stream에 참여하는 proforma 계산
         Args:
-            opt_years (list): list of years the optimization problem ran for
-            apply_inflation_rate_func:
-            fill_forward_func:
-            results (pd.DataFrame): DataFrame with all the optimization variable solutions
+            opt_years (list): 최적화 문제가 실행된 연도 목록
+            apply_inflation_rate_func: 인플레이션 비율을 적용하는 함수
+            fill_forward_func: 앞으로 채워넣는 함
+            results (pd.DataFrame): 최적화 변수 솔루션을 포함하는 데이터프레
 
-        Returns: A DateFrame (of with each year in opt_year as the
-        index and the corresponding value this stream provided)
-
+        Returns: 연도별로 인덱싱된 DataFrame (이 스트림이 제공한 해당 값이 포함됨)
         """
+      # 부모 클래스의 proforma_report 메서드 호출
         proforma = super().proforma_report(opt_years, apply_inflation_rate_func,
                                            fill_forward_func, results)
+      # 각각의 가치 스트림에 대한 수익 계산
         pref = self.full_name
         reg_up = \
             results.loc[:, f'{pref} Up (Charging) (kW)'] \
@@ -459,6 +263,7 @@ class MarketServiceUpAndDown(ValueStream):
             results.loc[:, f'{pref} Down (Charging) (kW)'] \
             + results.loc[:, f'{pref} Down (Discharging) (kW)']
         regulation_down_prof = np.multiply(reg_down, self.price_down)
+     # 에너지 스루풋 계산
 
         # NOTE: TODO: here we use rte_list[0] wqhich grabs the first available rte from an active ess
         #   we will want to change this to actually use all available rte values from the list
@@ -469,13 +274,14 @@ class MarketServiceUpAndDown(ValueStream):
             + results.loc[:, f"{self.name} Energy Throughput Up (Discharging) (kWh)"]
         energy_through_prof = np.multiply(energy_throughput, self.price_energy)
 
-        # combine all potential value streams into one df for faster
+        # 모든 value stream을 하나의 데이터프레임으로 결합
         #   splicing into years
         fr_results = pd.DataFrame({'E': energy_through_prof,
                                    'RU': regulation_up_prof,
                                    'RD': regulation_down_prof},
                                   index=results.index)
         market_results_only = proforma.copy(deep=True)
+     # 연도별로 계산된 수익을 프로포마에 추가
         for year in opt_years:
             year_subset = fr_results[fr_results.index.year == year]
             yr_pd = pd.Period(year=year, freq='y')
@@ -485,9 +291,9 @@ class MarketServiceUpAndDown(ValueStream):
                 = year_subset['RU'].sum()
             market_results_only.loc[yr_pd, f'{pref} Down'] \
                 = year_subset['RD'].sum()
-        # forward fill growth columns with inflation at their corresponding growth rates
+        # 성장률에 해당하는 인플레이션을 사용하여 성장 열을 앞으로 채우기
         market_results_only = fill_forward_func(market_results_only, self.growth)
         proforma = fill_forward_func(proforma, self.energy_growth)
-        # concat the two together
+       # 두 데이터프레임을 합치기
         proforma = pd.concat([proforma, market_results_only], axis=1)
         return proforma
