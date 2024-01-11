@@ -43,65 +43,64 @@ import storagevet.Library as Lib
 
 
 class VoltVar(ValueStream):
-    """ Reactive power support, voltage control, power quality. Each service will be daughters of the PreDispService class.
+    """ VoltVar 클래스: 반응 전력 지원, 전압 제어, 전력 품질을 다루는 클래스입니다.
+        각 서비스는 PreDispService 클래스의 하위 클래스로 구현될 것입니다.
     """
 
     def __init__(self, params):
-        """ Generates the objective function, finds and creates constraints.
-
+        """ 목적 함수를 생성하고 제약 조건을 찾아 생성합니다.
           Args:
-            params (Dict): input parameters
+            params (Dict): 입력 매개변수
         """
 
-        # generate the generic service object
+        # 일반적인 서비스 객체를 생성합니다.
         ValueStream.__init__(self, 'Volt Var', params)
 
-        # add voltage support specific attributes
-        self.vars_percent = params['percent'] / 100
-        self.price = params['price']
+        # 전압 지원에 특화된 속성을 추가합니다.
+        self.vars_percent = params['percent'] / 100 # 전압 변화 비율
+        self.price = params['price'] # 가격
 
         self.vars_reservation = 0
 
     def grow_drop_data(self, years, frequency, load_growth):
-        """ Adds data by growing the given data OR drops any extra data that might have slipped in.
-        Update variable that hold timeseries data after adding growth data. These method should be called after
-        add_growth_data and before the optimization is run.
+        """  데이터를 성장시키거나 추가로 들어온 데이터를 제거합니다. 최적화를 실행하기 전에 add_growth_data 메서드를 호출한 후에 이 메서드들이 호출되어야 합니다.
 
         Args:
-            years (List): list of years for which analysis will occur on
-            frequency (str): period frequency of the timeseries data
-            load_growth (float): percent/ decimal value of the growth rate of loads in this simulation
+            years (List): 분석이 수행될 연도 목록
+            frequency (str): 시계열 데이터의 주기
+            load_growth (float): 이 시뮬레이션의 부하 성장률의 백분율 또는 소수값
 
         """
+        # 추가된 데이터를 성장시킵니다.
         self.vars_percent = Lib.fill_extra_data(self.vars_percent, years, 0, 'M')
+        # 추가로 들어온 데이터를 제거합니다.
         self.vars_percent = Lib.drop_extra_data(self.vars_percent, years)
 
     def calculate_system_requirements(self, der_lst):
-        """ Calculate the system requirements that must be meet regardless of what other value streams are active
-        However these requirements do depend on the technology that are active in our analysis
+        """ 다른 Value Stream이 활성화되어 있더라도 충족해야 할 시스템 요구 사항을 계산합니다. 그러나 이러한 요구 사항은 분석에 활성화된 기술에 따라 달라집니다.
 
         Args:
-            der_lst (list): list of the initialized DERs in our scenario
+            der_lst (list): 시나리오에서 초기화된 DER(분산 에너지 자원) 목록
 
         """
-        # check to see if PV is included and is 'dc' connected to the  TODO fix this section if you want this service to work
+        # PV가 포함되어 있고 'dc'로 연결되어 있는지 확인합니다. TODO: 이 부분을 수정하여 서비스가 작동하도록 합니다.
         pv_max = 0
         inv_max = 0
-        # if 'PV' in der_dict.keys:
-        #     if der_dict['PV'].loc == 'dc':
-        #         # use inv_max of the inverter shared by pv and ess and save pv generation
-        #         inv_max = der_dict['PV'].inv_max
-        #         pv_max = der_dict['PV'].generation
-        # else:
-        #     # otherwise just use the storage's rated discharge
-        #     inv_max = der_dict['Storage'].dis_max_rated
+       # if 'PV' in der_dict.keys:
+       #     if der_dict['PV'].loc == 'dc':
+       #         # PV 및 ess에서 공유하는 인버터의 inv_max를 사용하고 PV 발전량을 저장합니다.
+       #         inv_max = der_dict['PV'].inv_max
+       #         pv_max = der_dict['PV'].generation
+       # else:
+       #     # 그렇지 않으면 저장소의 등급 방전만 사용합니다.
+       #     inv_max = der_dict['Storage'].dis_max_rated
 
-        # # save load
-        # self.load = load_data['load']
+       # 부하를 저장합니다.
+       # self.load = load_data['load']
 
         self.vars_reservation = self.vars_percent * inv_max
 
-        # constrain power s.t. enough vars are being outted as well
+        # 전력이 충분히 많이 출력되도록 전력을 제한합니다.
         power_sqrd = (inv_max**2) - (self.vars_reservation**2)
 
         dis_max = math.sqrt(power_sqrd) - pv_max
@@ -117,16 +116,15 @@ class VoltVar(ValueStream):
             'dis_max': dis_max}
 
     def proforma_report(self, opt_years, apply_inflation_rate_func, fill_forward_func, results):
-        """ Calculates the proforma that corresponds to participation in this value stream
-
+        """ Value Stream에 해당하는 proforma를 계산합니다.
         Args:
-            opt_years (list): list of years the optimization problem ran for
-            apply_inflation_rate_func:
-            fill_forward_func:
-            results (pd.DataFrame): DataFrame with all the optimization variable solutions
+             opt_years (list): 최적화 문제가 실행된 연도 목록
+             apply_inflation_rate_func: 인플레이션 비율 함수 적용
+             fill_forward_func:
+             results (pd.DataFrame): 모든 최적화 변수 솔루션을 포함한 DataFrame
 
-        Returns: A tuple of a DateFrame (of with each year in opt_year as the index and the corresponding
-        value this stream provided)
+
+        Returns: 각 연도를 인덱스로 사용하고 이 가치 스트림이 제공한 해당 값을 포함하는 DataFrame의 튜플
 
         """
         proforma = ValueStream.proforma_report(self, opt_years, apply_inflation_rate_func,
@@ -135,16 +133,15 @@ class VoltVar(ValueStream):
 
         for year in opt_years:
             proforma.loc[pd.Period(year=year, freq='y')] = self.price
-        # apply inflation rates
+        # 인플레이션 비율 적용
         proforma = apply_inflation_rate_func(proforma, None, min(opt_years))
 
         return proforma
 
     def update_yearly_value(self, new_value: float):
-        """ Updates the attribute associated to the yearly value of this service. (used by CBA)
-
+        """ 이 서비스의 연간 가치에 연결된 속성을 업데이트합니다. (CBA에서 사용됨)
         Args:
-            new_value (float): the dollar yearly value to be assigned for providing this service
+            new_value (float): 이 서비스를 제공하는 데 할당된 연간 달러 가치
 
         """
         self.price = new_value
