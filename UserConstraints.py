@@ -86,33 +86,36 @@ class UserConstraints(ValueStream):
         self.user_energy = Lib.drop_extra_data(self.user_energy, years)
 
     def calculate_system_requirements(self, der_lst):
-        """ Calculate the system requirements that must be meet regardless of what other value streams are active
-        However these requirements do depend on the technology that are active in our analysis
-
+        """ 활성화된 다양한 DER에 따라 무관하게 충족되어야 하는 시스템 요구 사항을 계산합니다.
         Args:
-            der_lst (list): list of the initialized DERs in our scenario
+            der_lst (list): 시나리오에서 초기화된 DER(Distributed Energy Resources) 목록
 
         """
-        # set system requirements on power (make sure everything is positive, regardless of how user gave the values)
-        # NOTE: because of this, we handle zeroes in min constraints here (we substitute in very large negative values)
-        #       do not change any max constraints (those zeroes are important to control any no-export or no-import cases)
+        # 전력에 대한 시스템 요구 사항 설정 (모든 값이 양수임을 보장하며 사용자가 값들을 제공하는 방식과 관계없이)
+        # NOTE: 이로 인해 최소 제약 조건의 0 값에 대한 처리가 여기서 이루어집니다 (매우 큰 음수 값으로 대체)
+        #       최대 제약 조건은 변경하지 마세요 (해당 0 값은 no-export 또는 no-import 경우를 제어하는 데 중요합니다)
+    
+        # POI: Max Export (kW) 제약 조건 설정
         self.poi_export_max_constraint = self.user_power.get('POI: Max Export (kW)')
         if self.poi_export_max_constraint is not None:
             self.poi_export_max_constraint = self.return_positive_values(self.poi_export_max_constraint)
             self.system_requirements.append(Requirement('poi export', 'max', self.name, self.poi_export_max_constraint))
-
+         
+        # POI: Min Export (kW) 제약 조건 설정
         self.poi_export_min_constraint = self.user_power.get('POI: Min Export (kW)')
         if self.poi_export_min_constraint is not None:
             self.poi_export_min_constraint = self.return_positive_values(self.poi_export_min_constraint)
             self.poi_export_min_constraint[self.poi_export_min_constraint == 0] = VERY_LARGE_NEGATIVE_NUMBER
             TellUser.info('In order for the POI: Min Export constraint to work, we modify values that are zero to be a very large negative number')
             self.system_requirements.append(Requirement('poi export', 'min', self.name, self.poi_export_min_constraint))
-
+       
+        # POI: Max Import (kW) 제약 조건 설정
         self.poi_import_max_constraint = self.user_power.get('POI: Max Import (kW)')
         if self.poi_import_max_constraint is not None:
             self.poi_import_max_constraint = self.return_positive_values(self.poi_import_max_constraint)
             self.system_requirements.append(Requirement('poi import', 'max', self.name, self.poi_import_max_constraint))
 
+        # POI: Min Import (kW) 제약 조건 설정
         self.poi_import_min_constraint = self.user_power.get('POI: Min Import (kW)')
         if self.poi_import_min_constraint is not None:
             self.poi_import_min_constraint = self.return_positive_values(self.poi_import_min_constraint)
@@ -120,10 +123,12 @@ class UserConstraints(ValueStream):
             TellUser.info('In order for the POI: Min Import constraint to work, we modify values that are zero to be a very large negative number')
             self.system_requirements.append(Requirement('poi import', 'min', self.name, self.poi_import_min_constraint))
 
-        # set system requirements on Energy
+       # 에너지에 대한 시스템 요구 사항 설정
+       # Aggregate Energy Max (kWh) 제약 조건 설정
         self.soe_max_constraint = self.user_energy.get('Aggregate Energy Max (kWh)')
         if self.soe_max_constraint is not None:
             self.system_requirements.append(Requirement('energy', 'max', self.name, self.soe_max_constraint))
+       # Aggregate Energy Min (kWh) 제약 조건 설정
         self.soe_min_constraint = self.user_energy.get('Aggregate Energy Min (kWh)')
         if self.soe_min_constraint is not None:
             self.system_requirements.append(Requirement('energy', 'min', self.name, self.soe_min_constraint))
