@@ -206,53 +206,56 @@ class ResourceAdequacy(ValueStream):
 
     @staticmethod
     def qualifying_commitment(der_lst, length):
-        """
-
+        """ DER 목록과 이벤트의 길이를 고려하여 자격 용량을 계산하는 메서드입니다.
         Args:
-            der_lst (list): list of the initialized DERs in our scenario
-            length (int): length of the event
+            der_lst (list): 시나리오에서 초기화된 DER(Distributed Energy Resources) 목록
+            length (int): 이벤트의 길이
 
-        NOTE: DR has this same method too  -HN
-
+        NOTE:  DR(Demand Response)에도 이 메서드가 동일하게 존재합니다  -HN
         """
+     # der_lst에 있는 각 DER의 qualifying_capacity 메서드를 호출하고 그 값을 모두 더하여 자격 용량(qc)을 계산합니다.
         qc = sum(der_instance.qualifying_capacity(length) for der_instance in der_lst)
         return qc
 
     def proforma_report(self, opt_years, apply_inflation_rate_func, fill_forward_func, results):
-        """ Calculates the proforma that corresponds to participation in this value stream
+        """ 이 값 스트림에 참여하는 데 해당하는 proforma(수익 계획서)를 계산합니다.
 
         Args:
-            opt_years (list): list of years the optimization problem ran for
+            opt_years (list): 최적화 문제가 실행된 연도 목록
             apply_inflation_rate_func:
             fill_forward_func:
-            results (pd.DataFrame): DataFrame with all the optimization variable solutions
+            results (pd.DataFrame): 모든 최적화 변수 솔루션을 포함한 DataFrame
 
-        Returns: A tuple of a DateFrame (of with each year in opt_year as the index and the corresponding
-        value this stream provided)
-
+        Returns: opt_years를 인덱스로 갖는 DataFrame의 튜플 (해당 값 스트림이 제공한 각 연도에 대한 값)
         """
+        # 부모 클래스의 proforma_report 메서드를 호출하여 초기화
         proforma = ValueStream.proforma_report(self, opt_years, apply_inflation_rate_func,
                                                fill_forward_func, results)
+        # 해당 값 스트림의 용량 결제에 대한 열을 0으로 초기화
         proforma[self.name + ' Capacity Payment'] = 0
-
+        # 각 연도에 대한 용량 결제를 계산하여 proforma에 추가
         for year in opt_years:
             proforma.loc[pd.Period(year=year, freq='y')] = self.qc * np.sum(self.capacity_rate)
-        # apply inflation rates
+        # 인플레이션 요율 적용
         proforma = apply_inflation_rate_func(proforma, None, min(opt_years))
+        # 성장률을 적용하여 누락된 값을 채우기
         proforma = fill_forward_func(proforma, self.growth)
         return proforma
 
     def timeseries_report(self):
-        """ Summaries the optimization results for this Value Stream.
+        """ 이 값 스트림에 대한 최적화 결과를 요약합니다.
 
-        Returns: A timeseries dataframe with user-friendly column headers that summarize the results
-            pertaining to this instance
+        Returns: 이 인스턴스와 관련된 결과를 요약하는 사용자 친화적인 열 헤더가 있는 시계열 DataFrame
 
         """
+        # 결과를 저장할 DataFrame 생성
         report = pd.DataFrame(index=self.system_load.index)
+        # 시스템 부하 정보 추가
         report.loc[:, "System Load (kW)"] = self.system_load
+        # RA 이벤트 여부 정보 추가
         report.loc[:, 'RA Event (y/n)'] = False
         report.loc[self.event_intervals, 'RA Event (y/n)'] = True
+        # 디스패치 모드에 따라 디스패치 파워 제약 또는 에너지 예약 제약 정보 추가
         if self.dispmode:
             report = pd.merge(report, self.der_dispatch_discharge_min_constraint, how='left', on='Start Datetime (hb)')
         else:
@@ -260,27 +263,23 @@ class ResourceAdequacy(ValueStream):
         return report
 
     def monthly_report(self):
-        """  Collects all monthly data that are saved within this object
+        """   이 객체에 저장된 월간 데이터를 수집하여 서비스의 월간 입력 가격을 포함한 DataFrame을 반환합니다.
 
-        Returns: A dataframe with the monthly input price of the service
-
+        Returns: Year-Month를 인덱스로 갖는 월간 입력 가격 DataFrame
         """
-
+        # RA Capacity Price를 포함한 월간 데이터를 사용하여 DataFrame 생성
         monthly_financial_result = pd.DataFrame({'RA Capacity Price ($/kW)': self.capacity_rate}, index=self.capacity_rate.index)
         monthly_financial_result.index.names = ['Year-Month']
 
         return monthly_financial_result
 
     def update_price_signals(self, monthly_data, time_series_data):
-        """ Updates attributes related to price signals with new price signals that are saved in
-        the arguments of the method. Only updates the price signals that exist, and does not require all
-        price signals needed for this service.
-
+        """ 새로운 가격 신호를 사용하여 관련된 속성을 업데이트합니다. 이 서비스에 필요한 모든 가격 신호를 요구하지 않으며, 존재하는 가격 신호만 업데이트합니다.
         Args:
-            monthly_data (DataFrame): monthly data after pre-processing
-            time_series_data (DataFrame): time series data after pre-processing
-
+            monthly_data (DataFrame): 전처리 후의 월간 데이터
+            time_series_data (DataFrame): 전처리 후의 시계열 데이터
         """
+        # RA Capacity Price 업데이트
         try:
             self.capacity_rate = monthly_data.loc[:, 'RA Capacity Price ($/kW)']
         except KeyError:
