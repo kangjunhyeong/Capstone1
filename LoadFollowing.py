@@ -78,9 +78,9 @@ class LoadFollowing(MarketServiceUpAndDown):
                 loads in this simulation
 
         """
-        super().grow_drop_data(years, frequency, load_growth)
-        self.eou_avg = Lib.fill_extra_data(self.eou_avg, years, 0, frequency)
-        self.eou_avg = Lib.drop_extra_data(self.eou_avg, years)
+        super().grow_drop_data(years, frequency, load_growth)                     """부모 클래스인 MarketServiceUpAndDown의 grow_drop_data 메서드를 호출하여 해당 메서드 먼저 실행"""
+        self.eou_avg = Lib.fill_extra_data(self.eou_avg, years, 0, frequency)     """eou_avg변수에 대해 Lib.fill_extra_data 함수를 사용하여 추가된 데이터를 0으로 채움"""
+        self.eou_avg = Lib.drop_extra_data(self.eou_avg, years)                   """eou_avg 변수에 대해 Lib.drop_extra_data 함수를 사용하여 추가된 데이터 중 불필요한 데이터를 삭제"""
 
         self.eod_avg = Lib.fill_extra_data(self.eod_avg, years, 0, frequency)
         self.eod_avg = Lib.drop_extra_data(self.eod_avg, years)
@@ -101,9 +101,9 @@ class LoadFollowing(MarketServiceUpAndDown):
 
             self.regd_min = Lib.fill_extra_data(self.regd_min, years,
                                                 0, frequency)
-            self.regd_min = Lib.drop_extra_data(self.regd_min, years)
+            self.regd_min = Lib.drop_extra_data(self.regd_min, years)             """그 과정 반복"""
 
-    def get_energy_option_up(self, mask):
+    def get_energy_option_up(self, mask):                      
         """ transform the energy option up into a n x 1 vector
 
         Args:
@@ -113,7 +113,7 @@ class LoadFollowing(MarketServiceUpAndDown):
 
         """
         return cvx.Parameter(sum(mask), value=self.eou_avg.loc[mask].values,
-                             name='LF_EOU')
+                             name='LF_EOU')                                     """'mask'에 해당하는 시점들의 'eou_avg'데이터를 사용하여 CVXPY의 파라미터 생성 (상향 에너지 옵션)"""
 
     def get_energy_option_down(self, mask):
         """ transform the energy option down into a n x 1 vector
@@ -125,7 +125,7 @@ class LoadFollowing(MarketServiceUpAndDown):
 
         """
         return cvx.Parameter(sum(mask), value=self.eod_avg.loc[mask].values,
-                             name='LF_EOD')
+                             name='LF_EOD')                                   """'mask'에 해당하는 시점들의 'eod_avg'데이터를 사용하여 CVXPY의 파라미터 생성 (하향 에너지 옵션)"""
 
     def constraints(self, mask, load_sum, tot_variable_gen, generator_out_sum,
                     net_ess_power, combined_rating):
