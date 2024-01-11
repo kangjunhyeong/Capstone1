@@ -30,7 +30,7 @@ Copyright (c) 2023, Electric Power Research Institute
 """
 ResourceAdequacy.py
 
-This Python class contains methods and attributes specific for service analysis within StorageVet.
+이 Python 클래스에는 StorageVet 내의 서비스 분석에 특정한 메서드와 속성이 포함되어 있습니다.
 """
 from storagevet.ValueStreams.ValueStream import ValueStream
 import pandas as pd
@@ -40,32 +40,32 @@ import storagevet.Library as Lib
 
 
 class ResourceAdequacy(ValueStream):
-    """ Resource Adequacy ValueStream. Each service will be daughters of the PreDispService class.
+    """ 자원 충분성(ValueStream) 값 스트림. 각 서비스는 PreDispService 클래스의 하위 클래스가 될 것입니다.
     """
 
     def __init__(self, params):
-        """ Generates the objective function, finds and creates constraints.
+        """ 목적 함수를 생성하고 제약 조건을 찾고 생성합니다.
 
           Args:
-            params (Dict): input parameters
+            params (Dict): 입력 매개변수
 
         """
 
-        # generate the generic service object
+        # 일반적인 서비스 객체를 생성합니다
         ValueStream.__init__(self, 'Resource Adequacy', params)
 
-        # add RA specific attributes
-        self.days = params['days']  # number of peak events
-        self.length = params['length']  # discharge duration
-        self.idmode = params['idmode'].lower()  # peak selection mode
-        self.dispmode = params['dispmode']  # dispatch mode
-        self.capacity_rate = params['value']  # monthly RA capacity rate (length = 12)
+        # RA 특정 속성을 추가합니다.
+        self.days = params['days']  # 피크 이벤트의 일수
+        self.length = params['length']  # 방전 기간
+        self.idmode = params['idmode'].lower()  # 피크 선택 모드
+        self.dispmode = params['dispmode']  # 디스패치 모드
+        self.capacity_rate = params['value']  # 월간 RA 용량 요금 (길이 = 12)
         if 'active hours' in self.idmode:
-            self.active = params['active'] == 1  # active RA timesteps (length = 8760/dt) must be boolean, not int
-        self.system_load = params['system_load']  # system load profile (length = 8760/dt)
-        self.growth = params['growth'] / 100  # growth rate of RA prices, convert from % to decimal
+            self.active = params['active'] == 1  # 활성 RA 타임스텝 (길이 = 8760/dt)은 불리언
+        self.system_load = params['system_load']  # 시스템 부하 프로필 (길이 = 8760/dt)
+        self.growth = params['growth'] / 100  # RA 가격의 성장률, %에서 십진수로 변환
 
-        # initialize the following atrributes to be set later
+        # 나중에 설정될 다음 속성을 초기화합니다.
         self.peak_intervals = []
         self.event_intervals = None
         self.event_start_times = None
@@ -74,17 +74,14 @@ class ResourceAdequacy(ValueStream):
         self.qc = 0
 
     def grow_drop_data(self, years, frequency, load_growth):
-        """ Adds data by growing the given data OR drops any extra data that might have slipped in.
-        Update variable that hold timeseries data after adding growth data. These method should be called after
-        add_growth_data and before the optimization is run.
+        """ 주어진 데이터를 성장시키거나 추가된 데이터를 제거 / 성장 데이터를 추가한 후에는 최적화가 실행되기 전에 이 메서드를 호출
 
         Args:
-            years (List): list of years for which analysis will occur on
-            frequency (str): period frequency of the timeseries data
-            load_growth (float): percent/ decimal value of the growth rate of loads in this simulation
-
+            years (List): 분석이 수행될 연도 목록
+            frequency (str): 시계열 데이터의 주기
+            load_growth (float): 시뮬레이션에서 부하 성장률의 퍼센트/소수값
         """
-        # timeseries data
+        # 시계열 데이터
         self.system_load = Lib.fill_extra_data(self.system_load, years, load_growth, frequency)
         self.system_load = Lib.drop_extra_data(self.system_load, years)
 
@@ -93,7 +90,7 @@ class ResourceAdequacy(ValueStream):
             self.active = Lib.drop_extra_data(self.active, years)
             self.active = self.active == 1
 
-        # monthly data
+        # 월간 데이터
         self.capacity_rate = Lib.fill_extra_data(self.capacity_rate, years, 0, 'M')
         self.capacity_rate = Lib.drop_extra_data(self.capacity_rate, years)
 
