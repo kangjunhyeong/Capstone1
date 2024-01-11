@@ -150,7 +150,7 @@ class LoadFollowing(MarketServiceUpAndDown):
         """
         constraint_list = super().constraints(mask, load_sum, tot_variable_gen,
                                               generator_out_sum,
-                                              net_ess_power, combined_rating)
+                                              net_ess_power, combined_rating)        """상위 클래스인 MarketServiceUpAndDown의 constraints 메서드를 호출하여 초기 제약 조건 목록을 가져옴"""
 
         # add time series service participation constraints, if called for
         #   Reg Up Max and Reg Up Min will constrain the sum of up_ch + up_dis
@@ -158,22 +158,22 @@ class LoadFollowing(MarketServiceUpAndDown):
             constraint_list += [
                 cvx.NonPos(self.variables['up_ch'] + self.variables['up_dis']
                            - self.regu_max.loc[mask])
-            ]
+            ]                                                                       """상향 참여의 제약 조건으로, up_ch와 up_dis의 합이 regu_max를 초과하지 않아야 함"""
             constraint_list += [
                 cvx.NonPos((-1) * self.variables['up_ch'] + (-1) * self.variables[
                     'up_dis'] + self.regu_min.loc[mask])
-            ]
+            ]                                                                       """상향 참여의 제약 조건으로, up_ch와 up_dis의 합이 regu_min 미만이어야 함"""
         #   Reg Down Max and Reg Down Min will constrain the sum down_ch+down_dis
         if self.d_ts_constraints:
             constraint_list += [
                 cvx.NonPos(self.variables['down_ch'] + self.variables['down_dis']
                            - self.regd_max.loc[mask])
-            ]
+            ]                                                                       """하향 참여의 제약 조건으로, down_ch와 down_dis의 합이 regd_max를 초과하지 않아야 함"""
             constraint_list += [
                 cvx.NonPos(-self.variables['down_ch'] - self.variables['down_dis']
                            + self.regd_min.loc[mask])
-            ]
-        return constraint_list
+            ]                                                                        """하향 참여의 제약 조건으로, down_ch와 down_dis의 합이 regd_min를 미만이어야 함"""
+        return constraint_list  """최적화 엔진에 추가할 모든 제약 조건을 구축하고 반환"""
 
     def update_price_signals(self, monthly_data, time_series_data):
         """ Updates attributes related to price signals with new price signals
