@@ -38,103 +38,88 @@ import pandas as pd
 
 
 class ValueStream:
-    """ A general template for services provided and constrained by the providing technologies.
-
+    """ 제공 기술에 의해 제공되고 제약을 받는 서비스에 대한 일반적인 템플릿.
     """
 
     def __init__(self, name, params):
-        """ Initialize all services with the following attributes
+        """ 모든 서비스를 다음 속성으로 초기화합니다.
 
         Args:
-            name (str): A string name/description for the service
-            params (Dict): input parameters
+            name (str): 서비스에 대한 문자열 이름/설명
+            params (Dict): 입력 매개변수
         """
         self.name = name
-        self.dt = params['dt']
-        self.system_requirements = []
+        self.dt = params['dt']   # 시간 간격
+        self.system_requirements = []   # 시스템 요구 사항 리스트
 
-        self.variables_df = pd.DataFrame()  # optimization variables are saved here
-        self.variable_names = {}
+        self.variables_df = pd.DataFrame()  # 최적화 변수는 여기에 저장됨
+        self.variable_names = {}  # 변수 이름
 
-        # attributes that are specific to the optimization problem being run (can change from window to window)
+         # 최적화 문제에 특화된 속성 (창에서 창으로 변경될 수 있는 속성)
         self.variables = None
 
     def grow_drop_data(self, years, frequency, load_growth):
-        """ Adds data by growing the given data OR drops any extra data that might have slipped in.
-        Update variable that hold timeseries data after adding growth data. These method should be called after
-        add_growth_data and before the optimization is run.
+        """ 주어진 데이터를 성장시키거나 추가로 포함된 데이터를 삭제하여 데이터를 확장합니다. 성장 데이터를 추가한 후 최적화가 실행되기 전에 시계열 데이터를 보관하는 변수를 업데이트합니다.
 
         Args:
-            years (List): list of years for which analysis will occur on
-            frequency (str): period frequency of the timeseries data
-            load_growth (float): percent/ decimal value of the growth rate of loads in this simulation
+            years (List): 분석이 수행될 연도의 목록
+            frequency (str): 시계열 데이터의 주기 또는 빈도
+            load_growth (float): 이 시뮬레이션에서 부하 성장률의 백분율 또는 소수값
 
         """
         pass
 
     def calculate_system_requirements(self, der_lst):
-        """ Calculate the system requirements that must be meet regardless of what other value streams are active
-        However these requirements do depend on the technology that are active in our analysis
+        """ 다른 Value Stream이 활성화되는지 여부에 관계없이 충족되어야 하는 시스템 요구 사항을 계산합니다. 그러나 이러한 요구 사항은 분석 중에 활성화된 기술에 따라 달라집니다.
 
         Args:
-            der_lst (list): list of the initialized DERs in our scenario
-
+            der_lst (list): 시나리오에서 초기화된 DER(Distributed Energy Resource) 목록
         """
         pass
 
     def initialize_variables(self, size):
-        """ Default method that will not create any new optimization variables_df
+        """ 새로운 최적화 변수를 생성하지 않는 기본 메서드입니다.
 
         Args:
-            size (int): length of optimization variables_df to create
+            size (int): 생성할 최적화 변수의 길이
 
         """
     def p_reservation_charge_up(self, mask):
-        """ the amount of charging power in the up direction (supplying power up into the grid) that
-        needs to be reserved for this value stream
+        """ 이 Value Stream에 대한 예약해야 하는 위 방향(그리드로 전원을 제공하는 방향)으로의 충전 전력 양입니다.
+
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
-
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
         Returns: CVXPY parameter/variable
 
         """
         return cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'{self.name}ZeroUp')
 
     def p_reservation_charge_down(self, mask):
-        """ the amount of charging power in the up direction (pulling power down from the grid) that
-        needs to be reserved for this value stream
+        """ 이 Value Stream에 대한 예약해야 하는 아래 방향(그리드에서 전원을 가져오는 방향)으로의 충전 전력 양입니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
-
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
         Returns: CVXPY parameter/variable
 
         """
         return cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'{self.name}ZeroDown')
 
     def p_reservation_discharge_up(self, mask):
-        """ the amount of discharge power in the up direction (supplying power up into the grid) that
-        needs to be reserved for this value stream
+        """ 이 Value Stream에 대한 예약해야 하는 위쪽 방향(그리드로 전원을 제공하는 방향)으로의 방전 전력 양입니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
-
+            mask (DataFrame):subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
         Returns: CVXPY parameter/variable
 
         """
         return cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'{self.name}ZeroUp')
 
     def p_reservation_discharge_down(self, mask):
-        """ the amount of discharging power in the down direction (pulling power down from the grid) that
-        needs to be reserved for this value stream
+        """ 이 Value Stream에 대한 예약해야 하는 아래쪽 방향(그리드에서 전원을 가져오는 방향)으로의 방전 전력 양입니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
 
         Returns: CVXPY parameter/variable
 
@@ -142,11 +127,10 @@ class ValueStream:
         return cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'{self.name}ZeroDown')
 
     def uenergy_option_stored(self, mask):
-        """ the amount of energy, due to regulation up that needs to be reserved for this value stream
+        """ 이 Value Stream에 대한 예약해야 하는 변동 상승에 따른 에너지 양입니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
 
         Returns: the up energy reservation in kWh
 
@@ -154,11 +138,10 @@ class ValueStream:
         return cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'ZeroStored{self.name}')
 
     def uenergy_option_provided(self, mask):
-        """ the amount of energy, due to regulation up that needs to be reserved for this value stream
+        """ 이 Value Stream 에 대한 변 상승에 따른 예약된 상승 에너지 양입니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
 
         Returns: the up energy reservation in kWh
 
@@ -166,16 +149,13 @@ class ValueStream:
         return cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'ZeroProvided{self.name}')
 
     def worst_case_uenergy_stored(self, mask):
-        """ the amount of energy, from the current SOE that needs to be reserved for this value stream
-        to prevent any violates between the steps in time that are not catpured in our timeseries.
-
-        Note: stored energy should be positive and provided energy should be negative
+        """ 현재 SOE로부터 예약되어야 하는 에너지 양으로, 시계열 데이터에 포함되지 않은 시간 단계 사이의 위반을 방지합니다.
+            NOTE: 저장된 에너지는 양수이어야 하며, 제공된 에너지는 음수여야 합니다.
 
         Args:
-            mask (DataFrame): A boolean array that is true for indices corresponding to time_series data included
-                    in the subs data set
+            mask (DataFrame): subs 데이터 세트에 포함된 time_series 데이터에 해당하는 인덱스에 대해 true인 부울 배열
 
-        Returns: the case where the systems would end up with more energy than expected
+        Returns: 예상보다 많은 에너지로 시스템이 끝날 경우의 경우
 
         """
         stored = cvx.Parameter(value=np.zeros(sum(mask)), shape=sum(mask), name=f'uEstoredZero{self.name}')
