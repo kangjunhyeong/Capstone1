@@ -95,89 +95,86 @@ class ResourceAdequacy(ValueStream):
         self.capacity_rate = Lib.drop_extra_data(self.capacity_rate, years)
 
     def calculate_system_requirements(self, der_lst):
-        """ Calculate the system requirements that must be meet regardless of what other value streams are active
-        However these requirements do depend on the technology that are active in our analysis
+        """ 다른 값 스트림이 활성화되었는지 여부에 관계없이 충족되어야 하는 시스템 요구사항을 계산/ 그러나 이러한 요구사항은 분석에서 활성화된 기술에 따라 달라.
 
         Args:
-            der_lst (list): list of the initialized DERs in our scenario
-
+            der_lst (list): 시나리오에서 초기화된 DER(Distributed Energy Resources) 목록
         """
+       # 시스템 부하 피크 찾기
         self.find_system_load_peaks()
+       # 이벤트 스케줄 생성
         self.schedule_events()
-
+       # 자격 요구사항 계산
         self.qc = self.qualifying_commitment(der_lst, self.length)
         total_time_intervals = len(self.event_intervals)
 
         if self.dispmode:
-            # create dispatch power constraint
-            # net power should be be the qualifying commitment for the times that correspond to the RA event
+            # 디스패치 파워 제약 생성
+            # 순 전력은 RA 이벤트에 해당하는 시간에 자격 요구사항이어야 합니다.
 
             self.der_dispatch_discharge_min_constraint = pd.Series(np.repeat(self.qc, total_time_intervals), index=self.event_intervals,
                                                       name='RA Discharge Min (kW)')
             self.system_requirements += [Requirement('der dispatch discharge', 'min', self.name, self.der_dispatch_discharge_min_constraint)]
         else:
-            # create energy reservation constraint
+            # 에너지 예약 제약 생성
             qualifying_energy = self.qc * self.length
 
-            # we constrain the energy to be at least the qualifying energy value at the beginning of the RA event to make sure that we
-            # have enough energy to meet our promise during the entirety of the event.
+            # 에너지는 RA 이벤트의 시작에서 최소한 자격 에너지 값이어야 하며, 이를 통해 약속을 이벤트 전체 동안 충족할 충분한 에너지가 있는지 확인합니다.
             self.energy_min_constraint = pd.Series(np.repeat(qualifying_energy, len(self.event_start_times)), index=self.event_start_times,
                                                    name='RA Energy Min (kWh)')
             self.system_requirements.append(Requirement('energy', 'min', self.name, self.energy_min_constraint))
 
     def find_system_load_peaks(self):
-        """ Find the time-steps that load peaks occur on. The RA events will occur around these.
-
-        This method edits the PEAK_INTERVALS attribute
-
+        """ 시스템 부하 피크가 발생하는 타임스텝을 찾습니다. RA 이벤트는 이러한 피크 주변에 발생합니다.
+            이 메서드는 PEAK_INTERVALS 속성을 편집합니다.
         """
         for year in self.system_load.index.year.unique():
             year_o_system_load = self.system_load.loc[self.system_load.index.year == year]
             if self.idmode == 'peak by year':
-                # 1) sort system load from largest to smallest
+                # 1) 시스템 부하를 가장 큰 것부터 가장 작은 것으로 정렬
                 max_int = year_o_system_load.sort_values(ascending=False)
-                # 2) keep only the first (and therefore largest) instant load per day, using an array of booleans that are True
-                # for every item that has already occurred before in the index
+                 # 2) 하루에 한 번씩만 나타나는 첫 번째(즉, 가장 큰) 인스턴트 로드만 유지 
+                 # 이미 인덱스에 나타난 항목에 대해 True인 불리언 배열을 사용
                 max_int_date = pd.Series(max_int.index.date, index=max_int.index)
                 max_days = max_int.loc[~max_int_date.duplicated(keep='first')]
 
-                # 3) select peak time-steps
-                # find ra_events number of events in year where system_load is at peak:
-                # select only the first DAYS number of timestamps
+                # 3) 피크 타임스텝 선택
+                # system_load가 피크인 이벤트 수를 찾습니다.
+                # 처음 DAYS 타임스텝만 선택합니다.
                 self.peak_intervals += list(max_days.index[:self.days].values)
 
             elif self.idmode == 'peak by month':
-                # 1) sort system load from largest to smallest
+                # 1) 시스템 부하를 가장 큰 것부터 가장 작은 것으로 정렬
                 max_int = year_o_system_load.sort_values(ascending=False)
-                # 2) keep only the first (and therefore largest) instant load per day, using an array of booleans that are True
-                # for every item that has already occurred before in the index
+                # 2) 하루에 한 번씩만 나타나는 첫 번째(즉, 가장 큰) 인스턴트 로드만 유지 
+                # 이미 인덱스에 나타난 항목에 대해 True인 불리언 배열을 사용
                 max_int_date = pd.Series(max_int.index.date, index=max_int.index)
                 max_days = max_int.loc[~max_int_date.duplicated(keep='first')]
 
-                # 3) select peak time-steps
-                # find number of events in month where system_load is at peak:
-                # select only the first DAYS number of timestamps, per month
+                # 3) 피크 타임스텝 선택
+                # system_load가 피크인 이벤트 수를 찾습니다.
+                # 각 월별로 DAYS 타임스텝만 선택합니다.
                 self.peak_intervals += list(max_days.groupby(by=max_days.index.month).head(self.days).index.values)
 
             elif self.idmode == 'peak by month with active hours':
                 active_year_sub = self.active[self.system_load.index.year == year]
-                # 1) sort system load, during ACTIVE time-steps from largest to smallest
+                # 1) 시스템 부하를 활성 시간 동안 가장 큰 것부터 가장 작은 것으로 정렬
                 max_int = year_o_system_load.loc[active_year_sub].sort_values(ascending=False)
-                # 2) keep only the first (and therefore largest) instant load per day, using an array of booleans that are True
-                # for every item that has already occurred before in the index
+                # 2) 하루에 한 번씩만 나타나는 첫 번째(즉, 가장 큰) 인스턴트 로드만 유지 
+                # 이미 인덱스에 나타난 항목에 대해 True인 불리언 배열을 사용
                 max_int_date = pd.Series(max_int.index.date, index=max_int.index)
                 max_days = max_int.loc[~max_int_date.duplicated(keep='first')]
 
-                # 3) select peak time-steps
-                # find number of events in month where system_load is at peak during active hours:
-                # select only first DAYS number of timestamps, per month
+               # 3) 피크 타임스텝 선택
+               # 시스템 부하가 활성 시간 동안 피크인 이벤트 수를 찾는다.
+               # 각 월별로 DAYS 타임스텝만 선택
                 self.peak_intervals += list(max_days.groupby(by=max_days.index.month).head(self.days).index.values)
 
     def schedule_events(self):
-        """ Determines RA event intervals (the times for which the event will be occurring) and event start times.
+        """ RA 이벤트 간격 및 이벤트 시작 시간을 결정합니다.
 
-        TODO: edge cases to consider -- if the event occurs at the beginning or end of an opt window  --HN
-        TODO: check that this works for sub-hourly system load profiles
+         TODO: 고려해야 할 예외 상황 -- 이벤트가 최적화 창의 시작이나 끝에 발생하는 경우 -- HN
+         TODO: 이것이 sub-hourly 시스템 부하 프로파일에 대해 작동하는지 확인 -- HN
 
         """
         # DETERMINE RA EVENT INTERVALS
